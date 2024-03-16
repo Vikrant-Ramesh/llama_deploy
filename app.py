@@ -3,7 +3,7 @@ from streamlit_chat import message as st_message
 import time
 import json
 import requests
-
+import os
 
 token_hugging_face = os.environ["HUGGINGFACEHUB_API_TOKEN"]
 
