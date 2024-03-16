@@ -1,79 +1,152 @@
-import os
-import my_api
 import streamlit as st
+from streamlit_chat import message as st_message
+from audiorecorder import audiorecorder
 import time
-from langchain_community.llms import Cohere
-from langchain_community.llms import HuggingFaceHub
-from langchain.prompts import HumanMessagePromptTemplate
-from langchain_core.messages import SystemMessage
-from langchain.memory import ConversationBufferMemory
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
-from langchain.schema import StrOutputParser
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+import json
+import requests
 
-HF_TOKEN = my_api.get_hf_key()
-os.environ["COHERE_API_KEY"] = my_api.get_cohere_key()
-os.environ["HUGGINGFACEHUB_API_TOKEN"] = HF_TOKEN
 
-embeddings = HuggingFaceInferenceAPIEmbeddings(
-    api_key=HF_TOKEN, model_name="BAAI/bge-base-en-v1.5"
-)
-print("Retrieving...")
+token_hugging_face = os.environ["HUGGINGFACEHUB_API_TOKEN"]
 
-query = "5 lessons from the book?"
+headers = {"Authorization": f"Bearer {token_hugging_face}"} #TOKEN HUGGING FACE
+API_URL_RECOGNITION = "https://api-inference.huggingface.co/models/openai/whisper-tiny.en"
+API_URL_DIAGNOSTIC = "https://api-inference.huggingface.co/models/abhirajeshbhai/symptom-2-disease-net"
 
-print("Its time...")
 
-template = """
-User: You are an AI Assistant that follows instructions extremely well.
-Please be truthful and give direct answers. Please tell 'I don't know' if user query is not in CONTEXT
 
-Keep in mind, you will lose the job, if you answer out of CONTEXT questions
 
-CONTEXT: {context}
-Query: {question}
+#Voice recognition model
+def recognize_speech(audio_file):
 
-Remember only return AI answer
-Assistant:
-"""
+    with open(audio_file, "rb") as f:
 
-llm = HuggingFaceHub(
-    repo_id="huggingfaceh4/zephyr-7b-alpha",
-    model_kwargs={
-        "max_new_tokens":512,
-        "repetition_penalty": 1.1,
-        "temperature": 0.5,
-        "top_p": 0.9,
-        "return_full_text":False}
-)
+        data = f.read()
 
-prompt = ChatPromptTemplate.from_template(template)
-output_parser = StrOutputParser()
+    time.sleep(1)
 
-chain = (
-    {
-        "context:": "You are an helpful AI who solves Computer Networks related questions",
-        "question": RunnablePassthrough(),
-    }
-    | prompt
-    | llm
-    | output_parser
-)
-st.title("Chat with PDF")
-choice = st.sidebar.selectbox("Choose",['Upload','Existing file'])
+    while True:
 
-if choice == 'Upload':
-    file_path = st.file_uploader("Upload your PDF")
-    #call ingest.py and pass the path
-else:
-    query = st.text_input("Enter your prompt:")
-    text_container = st.empty()
-    full_text = ""
-    for chunk in chain.stream(query):
-        words = chunk.split()  
-        for word in words:
-            full_text += word + " " 
-            text_container.markdown(full_text) 
-            time.sleep(0.05)
+        try:
 
+            response = requests.request("POST", API_URL_RECOGNITION, headers=headers, data=data)
+
+            output = json.loads(response.content.decode("utf-8"))
+
+            final_output = output['text']
+
+            break
+
+        except KeyError:
+
+            continue
+
+    return final_output
+
+
+#Disease prediction model
+def diagnostic_medic(voice_text):
+
+
+    synthomps = {"inputs": voice_text}
+
+    data = json.dumps(synthomps)
+
+
+
+    time.sleep(1)
+
+    while True:
+
+        try:
+
+            response = requests.request("POST", API_URL_DIAGNOSTIC, headers=headers, data=data)
+
+            output = json.loads(response.content.decode("utf-8"))
+
+            final_output = output[0][0]['label']
+
+            break
+
+        except KeyError:
+
+            continue
+
+    return final_output
+
+
+
+def generate_answer(audio):
+
+    """
+    INPUT: PATIENT'S SYMPTOMPS BY VOICE RECORDING
+
+    OUTPUT: MEDICAL CONSULTATION
+    """
+
+    with st.spinner("Consultation in progress..."):
+
+        # To save audio to a file:
+        wav_file = open("audio.wav", "wb")
+
+        wav_file.write(audio.tobytes())
+
+        # Voice recognition model
+
+        text = recognize_speech("./audio.wav")
+
+
+        #Disease Prediction Model
+
+        diagnostic = diagnostic_medic(text)
+
+        #Save conversation
+        st.session_state.history.append({"message": text, "is_user": True})
+        st.session_state.history.append({"message": f" Your disease would be {diagnostic}", "is_user": False})
+
+
+        st.success("Medical consultation done")
+
+
+if __name__ == "__main__":
+
+    # remove the hamburger in the upper right hand corner and the Made with Streamlit footer
+    hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+        </style>
+        """
+    st.markdown(hide_menu_style, unsafe_allow_html=True)
+
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.write(' ')
+
+
+    with col2:
+        st.image("./logo_.png", width = 200)
+
+
+    with col3:
+        st.write(' ')
+
+
+    if "history" not in st.session_state:
+
+        st.session_state.history = []
+
+    st.title("Medical Diagnostic Assistant")
+
+
+    #Show Input
+    audio = audiorecorder("Start recording", "Recording in progress...")
+
+    if len(audio) > 0:
+
+        generate_answer(audio)
+
+        for i, chat in enumerate(st.session_state.history): #Show historical consultation
+
+            st_message(**chat, key =str(i))
