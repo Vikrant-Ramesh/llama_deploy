@@ -1,6 +1,5 @@
 import streamlit as st
 from streamlit_chat import message as st_message
-from audiorecorder import audiorecorder
 import time
 import json
 import requests
@@ -140,8 +139,7 @@ if __name__ == "__main__":
     st.title("Medical Diagnostic Assistant")
 
 
-    #Show Input
-    audio = audiorecorder("Start recording", "Recording in progress...")
+    audio = "this is a test tcp"
 
     if len(audio) > 0:
 
