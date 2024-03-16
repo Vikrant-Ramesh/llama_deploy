@@ -53,7 +53,7 @@ output_parser = StrOutputParser()
 
 chain = (
     {
-        "context:": "You are an helpful AI who solves Computer Networks related questions"
+        "context:": "You are an helpful AI who solves Computer Networks related questions",
         "question": RunnablePassthrough(),
     }
     | prompt
