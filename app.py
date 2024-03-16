@@ -53,7 +53,6 @@ output_parser = StrOutputParser()
 
 chain = (
     {
-        "context": retriever.with_config(run_name="Docs"),
         "question": RunnablePassthrough(),
     }
     | prompt
