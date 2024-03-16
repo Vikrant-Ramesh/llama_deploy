@@ -11,7 +11,6 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langchain.schema import StrOutputParser
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
-from langchain_community.vectorstores import Chroma
 
 HF_TOKEN = my_api.get_hf_key()
 os.environ["COHERE_API_KEY"] = my_api.get_cohere_key()
@@ -21,10 +20,7 @@ embeddings = HuggingFaceInferenceAPIEmbeddings(
     api_key=HF_TOKEN, model_name="BAAI/bge-base-en-v1.5"
 )
 print("Retrieving...")
-db = Chroma(persist_directory="./db", 
-            embedding_function=embeddings)
 
-retriever = db.as_retriever()
 query = "5 lessons from the book?"
 
 print("Its time...")
